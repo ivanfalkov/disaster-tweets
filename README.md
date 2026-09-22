@@ -1,25 +1,13 @@
-структура проекта следующая 
-
-fashion-MNIST/
-
-
-├── configs/              # YAML configuration files
-
-
-├── experiments/            # Experiments with models
-
-├── notebooks/            # Notebooks with models
-
-├── scripts/              # Project scripts
-
-
-├── src/
-
-
-│   └── data/             # Dataset files   
-
-
-│   └── metrics/          # Metrics file
-
-
-│   └── checkpoints/      # Models 
+Структура проекта
+```
+disaster-tweets/
+├── configs/          # Конфигурации проекта и экспериментов
+├── data/             # Исходные и обработанные данные
+├── notebooks/        # Jupyter notebooks для EDA
+├── scripts/          # Точки запуска типовых операций
+├── experiments/      # End-to-end сценарии экспериментов
+├── src/              # Основная переиспользуемая логика проекта
+├── artifacts/        # Результаты экспериментов
+├── checkpoints/      # Сохранённые веса моделей
+└── tests/             # Тесты
+```
