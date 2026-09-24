@@ -1,0 +1,21 @@
+# Virtual environment
+.venv/
+
+# Python
+__pycache__/
+*.py[cod]
+
+# Data
+data/
+
+# Experiment artifacts
+artifacts/
+
+# Model checkpoints
+checkpoints/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Env
+.env
