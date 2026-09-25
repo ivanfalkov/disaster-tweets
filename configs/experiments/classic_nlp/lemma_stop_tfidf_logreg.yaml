@@ -1,0 +1,67 @@
+name: lemma_stop_tfidf_logreg
+
+data:
+  text_col: text
+  target_col: target
+
+preprocess:
+  filtering:
+    lower: true
+    remove_url: true
+    remove_mentions: true
+    remove_hashtags_symbol: true
+    keep_only_alpha: true
+    min_token_len: 2
+  stopwords:
+    enabled: true
+    language: english
+  normalization: lemma
+  duplicates:
+    mode: drop_conflict
+    text_col: text
+    target_col: target
+  columns:
+    text: text
+    out: text_pp
+  drop_empty: true
+
+split:
+  val_size: 0.1
+  test_size: 0.1
+  seed: 42
+  stratify_col: target
+
+features:
+  builder_output: sparse
+  text:
+    type: tfidf
+    column: text_pp
+    params:
+      max_features: 50000
+      ngram_range: [1, 2]
+      sublinear_tf: true
+      min_df: 2
+  keyword:
+    type: onehot
+    column: keyword
+    normalize: true
+    min_freq: 2
+  location:
+    type: onehot
+    column: location
+    normalize: true
+    min_freq: 5
+
+model:
+  type: logreg
+  params:
+    C: 1.0
+    max_iter: 1000
+    random_state: 42
+
+metrics: [accuracy, precision, recall, f1, roc_auc]
+
+clearml:
+  project: disaster-tweets
+  task: lemma_stop_tfidf_logreg
+  tags: [classic_nlp, tfidf, logreg, lemma, stopwords]

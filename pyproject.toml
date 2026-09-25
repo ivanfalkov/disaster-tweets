@@ -5,6 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 dependencies = [
+    "catboost>=1.2.10",
     "clearml>=2.1.12",
     "click>=8.5.0",
     "dotenv>=0.9.9",

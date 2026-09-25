@@ -1,0 +1,67 @@
+name: nostop_bow_gbm
+
+data:
+  text_col: text
+  target_col: target
+
+preprocess:
+  filtering:
+    lower: true
+    remove_url: true
+    remove_mentions: true
+    remove_hashtags_symbol: true
+    keep_only_alpha: true
+    min_token_len: 2
+  stopwords:
+    enabled: false
+    language: english
+  normalization: none
+  duplicates:
+    mode: drop_conflict
+    text_col: text
+    target_col: target
+  columns:
+    text: text
+    out: text_pp
+  drop_empty: true
+
+split:
+  val_size: 0.1
+  test_size: 0.1
+  seed: 42
+  stratify_col: target
+
+features:
+  builder_output: sparse
+  text:
+    type: bow
+    column: text_pp
+    params:
+      max_features: 30000
+      ngram_range: [1, 2]
+      min_df: 2
+  keyword:
+    type: onehot
+    column: keyword
+    normalize: true
+    min_freq: 2
+  location:
+    type: onehot
+    column: location
+    normalize: true
+    min_freq: 5
+
+model:
+  type: gbm
+  params:
+    n_estimators: 200
+    max_depth: 3
+    learning_rate: 0.1
+    random_state: 42
+
+metrics: [accuracy, precision, recall, f1, roc_auc]
+
+clearml:
+  project: disaster-tweets
+  task: nostop_bow_gbm
+  tags: [classic_nlp, bow, gbm, nostop]
