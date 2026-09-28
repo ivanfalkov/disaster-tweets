@@ -1,4 +1,4 @@
-name: lemma_stop_tfidf_catboost
+name: lemma_nostop_tfidf_logreg
 
 data:
   text_col: text
@@ -13,13 +13,13 @@ preprocess:
     keep_only_alpha: true
     min_token_len: 2
   tokenizer:
-    type: tweet
-    params:
+    type: tweet       
+    params:              
       preserve_case: false
       strip_handles: true
       reduce_len: true
   stopwords:
-    enabled: true
+    enabled: false
     language: english
   normalization: lemma
   duplicates:
@@ -59,20 +59,14 @@ features:
     min_freq: 5
 
 model:
-  type: catboost_sparse
+  type: logreg
   params:
-    iterations: 500
-    depth: 6
-    learning_rate: 0.05
-    loss_function: Logloss
-    eval_metric: F1
-    random_seed: 42
-    verbose: false
-    allow_writing_files: false
-    thread_count: -1
+    C: 1.0
+    max_iter: 1000
+    random_state: 42
 
 metrics: [accuracy, precision, recall, f1, roc_auc]
 
 clearml:
   project: disaster-tweets
-  tags: [classic_nlp, tfidf, catboost, lemma, stopwords]
+  tags: [classic_nlp, tfidf, logreg, lemma, stopwords]

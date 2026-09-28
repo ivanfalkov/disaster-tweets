@@ -1,7 +1,7 @@
 """Preprocessing logic: from a single tweet to a full dataframe.
 
 This module is pure except for regex patterns, which are read once from
-configs/data_config.yaml (section `patterns`) and cached.
+configs/general_config.yaml (section `patterns`) and cached.
 
 If pp_cfg is None, DEFAULT_PREPROCESS is used as-is (no merging).
 
@@ -35,18 +35,18 @@ from src.preprocessing.defaults import DEFAULT_PREPROCESS
 from src.utils.config import load_config
 
 
-DEFAULT_DATA_CONFIG = "configs/data_config.yaml"
+DEFAULT_general_config = "configs/general_config.yaml"
 
 
 @lru_cache(maxsize=4)
 def _patterns(config_path: str) -> dict[str, re.Pattern]:
-    """Load and compile regex patterns from data_config.yaml."""
+    """Load and compile regex patterns from general_config.yaml."""
     cfg = load_config(config_path)
     p = cfg.get("patterns", {})
     missing = [k for k in ("url", "mention", "hashtag", "word") if k not in p]
     if missing:
         raise KeyError(
-            f"data_config.yaml is missing patterns: {missing}. "
+            f"general_config.yaml is missing patterns: {missing}. "
             f"Add a `patterns` section with keys url, mention, hashtag, word."
         )
     return {k: re.compile(p[k]) for k in ("url", "mention", "hashtag", "word")}
@@ -126,7 +126,7 @@ def filtering(
     remove_url: bool = True,
     remove_mentions: bool = True,
     remove_hashtags_symbol: bool = True,
-    config_path: str = DEFAULT_DATA_CONFIG,
+    config_path: str = DEFAULT_general_config,
 ) -> str:
     pat = _patterns(config_path)
     if remove_url:
@@ -180,7 +180,7 @@ def preprocessing_text(
     remove_stopwords: bool = False,
     stopwords_language: str = "english",
     normalization: str = "none",
-    config_path: str = DEFAULT_DATA_CONFIG,
+    config_path: str = DEFAULT_general_config,
 ) -> str:
     """Full preprocessing for a single tweet. All steps switchable."""
     if not isinstance(text, str):

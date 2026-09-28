@@ -59,7 +59,7 @@ def init_task(cfg: dict[str, Any]) -> Any:
     cm = cfg.get("clearml", {}) or {}
     task = _ClearMLTask.init(
         project_name=cm.get("project", "disaster-tweets"),
-        task_name=cm.get("task", "experiment"),
+        task_name=cm.get("task") or cfg.get("name", "experiment"),
         auto_connect_arg_parser=False,
         auto_connect_frameworks=True,
     )

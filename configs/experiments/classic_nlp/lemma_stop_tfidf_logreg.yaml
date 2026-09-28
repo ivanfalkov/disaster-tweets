@@ -69,5 +69,4 @@ metrics: [accuracy, precision, recall, f1, roc_auc]
 
 clearml:
   project: disaster-tweets
-  task: lemma_stop_tfidf_logreg
   tags: [classic_nlp, tfidf, logreg, lemma, stopwords]

@@ -1,4 +1,4 @@
-name: nostop_bow_gbm
+name: stem_stop_tfidf_logreg
 
 data:
   text_col: text
@@ -12,10 +12,16 @@ preprocess:
     remove_hashtags_symbol: true
     keep_only_alpha: true
     min_token_len: 2
+  tokenizer:
+    type: tweet       
+    params:              
+      preserve_case: false
+      strip_handles: true
+      reduce_len: true
   stopwords:
-    enabled: false
+    enabled: true
     language: english
-  normalization: none
+  normalization: stem
   duplicates:
     mode: drop_conflict
     text_col: text
@@ -34,11 +40,12 @@ split:
 features:
   builder_output: sparse
   text:
-    type: bow
+    type: tfidf
     column: text_pp
     params:
-      max_features: 30000
+      max_features: 50000
       ngram_range: [1, 2]
+      sublinear_tf: true
       min_df: 2
   keyword:
     type: onehot
@@ -52,16 +59,14 @@ features:
     min_freq: 5
 
 model:
-  type: gbm
+  type: logreg
   params:
-    n_estimators: 200
-    max_depth: 3
-    learning_rate: 0.1
+    C: 1.0
+    max_iter: 1000
     random_state: 42
 
 metrics: [accuracy, precision, recall, f1, roc_auc]
 
 clearml:
   project: disaster-tweets
-  task: nostop_bow_gbm
-  tags: [classic_nlp, bow, gbm, nostop]
+  tags: [classic_nlp, tfidf, logreg, stem, stopwords]

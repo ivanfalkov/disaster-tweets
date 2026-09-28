@@ -1,10 +1,14 @@
-# Infrastructure config for the project.
+# General infrastructure config for the project.
 # Not tied to any experiment. Experiment-specific settings live in
 # configs/experiments/<block>/<name>.yaml.
 
 paths:
+  raw_dir: data/raw
+  interim_dir: data/interim
+  processed_dir: data/processed
   raw_train: data/raw/train.csv
   raw_test: data/raw/test.csv
+  raw_sample_submission: data/raw/sample_submission.csv
 
 kaggle:
   competition: nlp-getting-started
@@ -25,3 +29,19 @@ patterns:
   mention: "@\\w+"
   hashtag: "#(\\w+)"
   word: "^[a-z]+$"
+
+metrics:
+  supported:
+    - accuracy
+    - precision
+    - recall
+    - f1
+    - roc_auc
+    - average_precision
+    - mcc
+  default:
+    - accuracy
+    - precision
+    - recall
+    - f1
+    - roc_auc

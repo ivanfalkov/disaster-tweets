@@ -1,4 +1,4 @@
-name: lemma_stop_tfidf_catboost
+name: stem_stop_bow_logreg
 
 data:
   text_col: text
@@ -21,7 +21,7 @@ preprocess:
   stopwords:
     enabled: true
     language: english
-  normalization: lemma
+  normalization: stem
   duplicates:
     mode: drop_conflict
     text_col: text
@@ -40,12 +40,11 @@ split:
 features:
   builder_output: sparse
   text:
-    type: tfidf
+    type: bow
     column: text_pp
     params:
       max_features: 50000
       ngram_range: [1, 2]
-      sublinear_tf: true
       min_df: 2
   keyword:
     type: onehot
@@ -59,20 +58,14 @@ features:
     min_freq: 5
 
 model:
-  type: catboost_sparse
+  type: logreg
   params:
-    iterations: 500
-    depth: 6
-    learning_rate: 0.05
-    loss_function: Logloss
-    eval_metric: F1
-    random_seed: 42
-    verbose: false
-    allow_writing_files: false
-    thread_count: -1
+    C: 1.0
+    max_iter: 1000
+    random_state: 42
 
 metrics: [accuracy, precision, recall, f1, roc_auc]
 
 clearml:
   project: disaster-tweets
-  tags: [classic_nlp, tfidf, catboost, lemma, stopwords]
+  tags: [classic_nlp, bow, logreg, stem, stopwords]
