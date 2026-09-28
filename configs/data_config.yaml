@@ -1,0 +1,27 @@
+# Infrastructure config for the project.
+# Not tied to any experiment. Experiment-specific settings live in
+# configs/experiments/<block>/<name>.yaml.
+
+paths:
+  raw_train: data/raw/train.csv
+  raw_test: data/raw/test.csv
+
+kaggle:
+  competition: nlp-getting-started
+  expected_files:
+    - train.csv
+    - test.csv
+    - sample_submission.csv
+
+columns:
+  id: id
+  text: text
+  target: target
+  keyword: keyword
+  location: location
+
+patterns:
+  url: "https?://\\S+|www\\.\\S+"
+  mention: "@\\w+"
+  hashtag: "#(\\w+)"
+  word: "^[a-z]+$"

@@ -1,4 +1,4 @@
-name: lemma_stop_tfidf_logreg
+name: lemma_stop_tfidf_catboost
 
 data:
   text_col: text
@@ -59,15 +59,20 @@ features:
     min_freq: 5
 
 model:
-  type: logreg
+  type: catboost_sparse
   params:
-    C: 1.0
-    max_iter: 1000
-    random_state: 42
+    iterations: 500
+    depth: 6
+    learning_rate: 0.05
+    loss_function: Logloss
+    eval_metric: F1
+    random_seed: 42
+    verbose: false
+    allow_writing_files: false
 
 metrics: [accuracy, precision, recall, f1, roc_auc]
 
 clearml:
   project: disaster-tweets
-  task: lemma_stop_tfidf_logreg
-  tags: [classic_nlp, tfidf, logreg, lemma, stopwords]
+  task: lemma_stop_tfidf_catboost
+  tags: [classic_nlp, tfidf, catboost, lemma, stopwords]

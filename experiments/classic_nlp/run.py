@@ -21,9 +21,10 @@ import pandas as pd
 
 from src.data.loader import load_raw
 from src.data.split import stratified_split
-from src.features.builder import build_features
+from src.features.builder import FeatureBuilder
 from src.metrics.classification import compute_metrics
-from src.models.classic import build_classic_model, validate_sparse_input
+from src.models.classic import validate_sparse_input
+from src.models.factory import build_model
 from src.preprocessing.preprocessing import preprocess_dataframe
 from src.utils.clearml_utils import (
     finish,
@@ -78,29 +79,33 @@ def main() -> None:
     print(f"[run] splits: train={len(tr)}, val={len(va)}, test={len(te)}")
 
     # --- features ---
-    bundle = build_features(tr, va, te, cfg["features"])
-    print(
-        f"[run] features: output={bundle.output}, "
-        f"blocks={bundle.blocks}, n_features={bundle.n_features}"
-    )
-    if bundle.output != "sparse":
+    builder = FeatureBuilder(cfg["features"])
+    X_train = builder.fit_transform(tr)
+    X_val = builder.transform(va)
+    X_test = builder.transform(te)
+
+    if builder.output != "sparse":
         raise ValueError(
             f"classic_nlp/run.py expects builder_output='sparse', "
-            f"got {bundle.output!r}"
+            f"got {builder.output!r}"
         )
+
+    print(
+        f"[run] features: output={builder.output}, "
+        f"blocks={builder.blocks_}, n_features={builder.n_features}"
+    )
 
     target_col = cfg["data"]["target_col"]
     text_col = cfg["data"]["text_col"]
     splits = {
-        "train": (tr, bundle.X_train),
-        "val": (va, bundle.X_val),
-        "test": (te, bundle.X_test),
+        "train": (tr, X_train),
+        "val": (va, X_val),
+        "test": (te, X_test),
     }
 
-    # --- model ---
-    model = build_classic_model(cfg["model"])
-    validate_sparse_input(bundle.X_train, type(model).__name__)
-    model.fit(bundle.X_train, tr[target_col].values)
+    model = build_model(cfg["model"])
+    validate_sparse_input(X_train, type(model).__name__)
+    model.fit(X_train, tr[target_col].values)
 
     # --- per-split evaluation + predictions ---
     metric_names = cfg.get("metrics", ["accuracy", "f1", "roc_auc"])

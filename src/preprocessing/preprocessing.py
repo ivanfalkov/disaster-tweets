@@ -1,60 +1,55 @@
 """Preprocessing logic: from a single tweet to a full dataframe.
 
-This module is pure: it does NOT read any config files.
-It accepts a `pp_cfg` dict (the `preprocess` section of an experiment config).
+This module is pure except for regex patterns, which are read once from
+configs/data_config.yaml (section `patterns`) and cached.
+
 If pp_cfg is None, DEFAULT_PREPROCESS is used as-is (no merging).
+
+Tokenizer modes:
+    "tweet" : TweetTokenizer with configurable params
+    "none"  : no tokenization at all. Intended for finetune pipelines where
+              a HF tokenizer will handle the raw text later.
+              In this mode, text-level transforms (stopwords, lemmatization,
+              stemming, keep_only_alpha, min_token_len) must be disabled,
+              otherwise a ValueError is raised.
 
 Layers (bottom-up):
     - filtering()             : regex-only cleanup (url, mentions, hashtags)
+    - tokenize()              : text -> list[str], switchable via cfg
     - preprocessing_text()    : full single-string pipeline
     - duplicates_processing() : dedup before split
     - preprocess_dataframe()  : full dataframe pipeline
-
-Duplicates handling lives here because it must happen BEFORE the split.
 """
 from __future__ import annotations
 
 import re
 from functools import lru_cache
-from typing import Any
+from typing import Any, Callable
 
 import pandas as pd
 from nltk.corpus import stopwords
 from nltk.stem import PorterStemmer, WordNetLemmatizer
 from nltk.tokenize import TweetTokenizer
 
-
-DEFAULT_PREPROCESS: dict[str, Any] = {
-    "filtering": {
-        "lower": True,
-        "remove_url": True,
-        "remove_mentions": True,
-        "remove_hashtags_symbol": True,
-        "keep_only_alpha": True,
-        "min_token_len": 2,
-    },
-    "stopwords": {
-        "enabled": False,
-        "language": "english",
-    },
-    "normalization": "none",
-    "duplicates": {
-        "mode": "drop_conflict",
-        "text_col": "text",
-        "target_col": "target",
-    },
-    "columns": {
-        "text": "text",
-        "out": "text_pp",
-    },
-    "drop_empty": True,
-}
+from src.preprocessing.defaults import DEFAULT_PREPROCESS
+from src.utils.config import load_config
 
 
-URL_PATTERN = re.compile(r"https?://\S+|www\.\S+")
-MENTION_PATTERN = re.compile(r"@\w+")
-HASHTAG_PATTERN = re.compile(r"#(\w+)")
-WORD_PATTERN = re.compile(r"^[a-z]+$")
+DEFAULT_DATA_CONFIG = "configs/data_config.yaml"
+
+
+@lru_cache(maxsize=4)
+def _patterns(config_path: str) -> dict[str, re.Pattern]:
+    """Load and compile regex patterns from data_config.yaml."""
+    cfg = load_config(config_path)
+    p = cfg.get("patterns", {})
+    missing = [k for k in ("url", "mention", "hashtag", "word") if k not in p]
+    if missing:
+        raise KeyError(
+            f"data_config.yaml is missing patterns: {missing}. "
+            f"Add a `patterns` section with keys url, mention, hashtag, word."
+        )
+    return {k: re.compile(p[k]) for k in ("url", "mention", "hashtag", "word")}
 
 
 @lru_cache(maxsize=4)
@@ -72,13 +67,57 @@ def _lemmatizer() -> WordNetLemmatizer:
     return WordNetLemmatizer()
 
 
-@lru_cache(maxsize=1)
-def _tokenizer() -> TweetTokenizer:
-    return TweetTokenizer(
-        preserve_case=False,
-        strip_handles=True,
-        reduce_len=True,
+def _tokenizer_tweet_factory(
+    preserve_case: bool,
+    strip_handles: bool,
+    reduce_len: bool,
+) -> Callable[[str], list[str]]:
+    tok = TweetTokenizer(
+        preserve_case=preserve_case,
+        strip_handles=strip_handles,
+        reduce_len=reduce_len,
     )
+    return tok.tokenize
+
+
+@lru_cache(maxsize=8)
+def _build_tokenizer(
+    tokenizer_type: str,
+    params_key: tuple[tuple[str, Any], ...],
+) -> Callable[[str], list[str]] | None:
+    """Return tokenization callable, or None if type == 'none'."""
+    if tokenizer_type == "none":
+        return None
+    if tokenizer_type == "tweet":
+        params = dict(params_key)
+        return _tokenizer_tweet_factory(
+            preserve_case=params.get("preserve_case", False),
+            strip_handles=params.get("strip_handles", True),
+            reduce_len=params.get("reduce_len", True),
+        )
+    raise ValueError(f"Unknown tokenizer type: {tokenizer_type!r}")
+
+
+def _freeze_params(params: dict[str, Any] | None) -> tuple[tuple[str, Any], ...]:
+    if not params:
+        return ()
+    return tuple(sorted(params.items()))
+
+
+def tokenize(
+    text: str,
+    *,
+    tokenizer_type: str = "tweet",
+    tokenizer_params: dict[str, Any] | None = None,
+) -> list[str]:
+    """Split text into tokens. Raises if tokenizer_type == 'none'."""
+    fn = _build_tokenizer(tokenizer_type, _freeze_params(tokenizer_params))
+    if fn is None:
+        raise ValueError(
+            "tokenize() called with tokenizer_type='none'. "
+            "Callers must check for 'none' before invoking tokenize()."
+        )
+    return fn(text)
 
 
 def filtering(
@@ -87,14 +126,43 @@ def filtering(
     remove_url: bool = True,
     remove_mentions: bool = True,
     remove_hashtags_symbol: bool = True,
+    config_path: str = DEFAULT_DATA_CONFIG,
 ) -> str:
+    pat = _patterns(config_path)
     if remove_url:
-        text = URL_PATTERN.sub(" ", text)
+        text = pat["url"].sub(" ", text)
     if remove_mentions:
-        text = MENTION_PATTERN.sub(" ", text)
+        text = pat["mention"].sub(" ", text)
     if remove_hashtags_symbol:
-        text = HASHTAG_PATTERN.sub(r"\1", text)
+        text = pat["hashtag"].sub(r"\1", text)
     return text
+
+
+def _validate_none_tokenizer_cfg(
+    *,
+    tokenizer_type: str,
+    keep_only_alpha: bool,
+    min_token_len: int,
+    remove_stopwords: bool,
+    normalization: str,
+) -> None:
+    if tokenizer_type != "none":
+        return
+    problems = []
+    if remove_stopwords:
+        problems.append("remove_stopwords=True")
+    if normalization != "none":
+        problems.append(f"normalization={normalization!r}")
+    if keep_only_alpha:
+        problems.append("keep_only_alpha=True")
+    if min_token_len > 1:
+        problems.append(f"min_token_len={min_token_len}")
+    if problems:
+        raise ValueError(
+            "tokenizer.type='none' disables tokenization, so text-level "
+            "transforms are not applicable. Disable them in the config: "
+            + ", ".join(problems)
+        )
 
 
 def preprocessing_text(
@@ -105,11 +173,14 @@ def preprocessing_text(
     remove_url: bool = True,
     remove_mentions: bool = True,
     remove_hashtags_symbol: bool = True,
+    tokenizer_type: str = "tweet",
+    tokenizer_params: dict[str, Any] | None = None,
     keep_only_alpha: bool = True,
     min_token_len: int = 2,
     remove_stopwords: bool = False,
     stopwords_language: str = "english",
     normalization: str = "none",
+    config_path: str = DEFAULT_DATA_CONFIG,
 ) -> str:
     """Full preprocessing for a single tweet. All steps switchable."""
     if not isinstance(text, str):
@@ -124,12 +195,28 @@ def preprocessing_text(
             remove_url=remove_url,
             remove_mentions=remove_mentions,
             remove_hashtags_symbol=remove_hashtags_symbol,
+            config_path=config_path,
         )
 
-    tokens = _tokenizer().tokenize(text)
+    if tokenizer_type == "none":
+        _validate_none_tokenizer_cfg(
+            tokenizer_type=tokenizer_type,
+            keep_only_alpha=keep_only_alpha,
+            min_token_len=min_token_len,
+            remove_stopwords=remove_stopwords,
+            normalization=normalization,
+        )
+        return text.strip()
 
+    tokens = tokenize(
+        text,
+        tokenizer_type=tokenizer_type,
+        tokenizer_params=tokenizer_params,
+    )
+
+    pat = _patterns(config_path)
     if keep_only_alpha:
-        tokens = [t for t in tokens if WORD_PATTERN.fullmatch(t)]
+        tokens = [t for t in tokens if pat["word"].fullmatch(t)]
     else:
         tokens = [t for t in tokens if t.strip()]
 
@@ -155,6 +242,7 @@ def preprocessing_text(
 def _preprocessing_text_from_cfg(text: str, cfg: dict[str, Any]) -> str:
     f = cfg["filtering"]
     sw = cfg["stopwords"]
+    tok = cfg.get("tokenizer", {}) or {}
     return preprocessing_text(
         text,
         lower=f["lower"],
@@ -162,6 +250,8 @@ def _preprocessing_text_from_cfg(text: str, cfg: dict[str, Any]) -> str:
         remove_url=f["remove_url"],
         remove_mentions=f["remove_mentions"],
         remove_hashtags_symbol=f["remove_hashtags_symbol"],
+        tokenizer_type=tok.get("type", "tweet"),
+        tokenizer_params=tok.get("params"),
         keep_only_alpha=f["keep_only_alpha"],
         min_token_len=f["min_token_len"],
         remove_stopwords=sw["enabled"],
@@ -175,14 +265,6 @@ def duplicates_processing(
     *,
     pp_cfg: dict[str, Any] | None = None,
 ) -> pd.DataFrame:
-    """Handle duplicates before split.
-
-    mode:
-        "off"           — return as is
-        "drop_exact"    — drop exact duplicates by text (keep first)
-        "drop_conflict" — drop rows where the same text has different targets,
-                          then drop remaining exact duplicates
-    """
     cfg = pp_cfg or DEFAULT_PREPROCESS
     dup = cfg["duplicates"]
     mode = dup["mode"]
@@ -216,15 +298,6 @@ def preprocess_dataframe(
     *,
     pp_cfg: dict[str, Any] | None = None,
 ) -> pd.DataFrame:
-    """Full dataframe pipeline before split:
-
-        1) duplicates_processing
-        2) build `columns.out` from `columns.text` via preprocessing
-        3) optionally drop rows where the preprocessed text is empty
-
-    If pp_cfg is None, DEFAULT_PREPROCESS is used as-is (no merging).
-    Returns a new dataframe. The input is not mutated.
-    """
     cfg = pp_cfg or DEFAULT_PREPROCESS
 
     text_col = cfg["columns"]["text"]
