@@ -2,8 +2,8 @@
 
 Pipeline:
     load_raw -> preprocess_dataframe -> stratified_split
-    -> build_features -> build_classic_model -> fit / predict
-    -> compute_metrics -> save artifacts -> log to ClearML
+    -> build_features -> build_classic_model -> fit
+    -> per-split metrics + predictions -> save artifacts -> log to ClearML
 
 Usage:
     uv run python experiments/classic_nlp/run.py \
@@ -42,8 +42,8 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def _get_scores(model, X) -> np.ndarray | None:
-    """Extract positive-class scores; returns None if not possible."""
+def _positive_scores(model, X) -> np.ndarray | None:
+    """Return positive-class scores, or None if the model exposes neither API."""
     if hasattr(model, "predict_proba"):
         return np.asarray(model.predict_proba(X))[:, 1]
     if hasattr(model, "decision_function"):
@@ -79,63 +79,64 @@ def main() -> None:
 
     # --- features ---
     bundle = build_features(tr, va, te, cfg["features"])
-    print(f"[run] features: output={bundle.output}, blocks={bundle.blocks}, n_features={bundle.n_features}")
-
+    print(
+        f"[run] features: output={bundle.output}, "
+        f"blocks={bundle.blocks}, n_features={bundle.n_features}"
+    )
     if bundle.output != "sparse":
         raise ValueError(
-            f"classic_nlp/run.py expects builder_output='sparse', got {bundle.output!r}"
+            f"classic_nlp/run.py expects builder_output='sparse', "
+            f"got {bundle.output!r}"
         )
 
-    X_train, X_val, X_test = bundle.X_train, bundle.X_val, bundle.X_test
-    y_train = tr[cfg["data"]["target_col"]].values
-    y_val = va[cfg["data"]["target_col"]].values
-    y_test = te[cfg["data"]["target_col"]].values
+    target_col = cfg["data"]["target_col"]
+    text_col = cfg["data"]["text_col"]
+    splits = {
+        "train": (tr, bundle.X_train),
+        "val": (va, bundle.X_val),
+        "test": (te, bundle.X_test),
+    }
 
     # --- model ---
     model = build_classic_model(cfg["model"])
-    validate_sparse_input(X_train, type(model).__name__)
-    model.fit(X_train, y_train)
+    validate_sparse_input(bundle.X_train, type(model).__name__)
+    model.fit(bundle.X_train, tr[target_col].values)
 
-    # --- metrics ---
+    # --- per-split evaluation + predictions ---
     metric_names = cfg.get("metrics", ["accuracy", "f1", "roc_auc"])
+    metrics_payload: dict[str, dict] = {}
 
-    val_metrics = compute_metrics(
-        y_val, model.predict(X_val), _get_scores(model, X_val), metrics=metric_names,
-    )
-    test_metrics = compute_metrics(
-        y_test, model.predict(X_test), _get_scores(model, X_test), metrics=metric_names,
-    )
-    train_metrics = compute_metrics(
-        y_train, model.predict(X_train), _get_scores(model, X_train), metrics=metric_names,
-    )
+    for split_name, (df_split, X_split) in splits.items():
+        y_split = df_split[target_col].values
 
-    print(f"[run] train metrics: {train_metrics}")
-    print(f"[run] val   metrics: {val_metrics}")
-    print(f"[run] test  metrics: {test_metrics}")
+        y_pred = model.predict(X_split)
+        y_score = _positive_scores(model, X_split)
+        metrics = compute_metrics(y_split, y_pred, y_score, metrics=metric_names)
 
-    log_metrics(task, train_metrics, split="train")
-    log_metrics(task, val_metrics, split="val")
-    log_metrics(task, test_metrics, split="test")
+        metrics_payload[split_name] = metrics
+        print(f"[run] {split_name:5s} metrics: {metrics}")
+        log_metrics(task, metrics, split=split_name)
 
-    # --- artifacts ---
-    metrics_path = artifacts_dir / "metrics.json"
-    log_dict_as_json(task, {"train": train_metrics, "val": val_metrics, "test": test_metrics}, metrics_path)
+        preds_df = pd.DataFrame(
+            {
+                "text": df_split[text_col].values,
+                "target": y_split,
+                "pred": y_pred,
+                "score": y_score,
+            }
+        )
+        preds_path = artifacts_dir / f"{split_name}_predictions.csv"
+        preds_df.to_csv(preds_path, index=False)
+        log_artifact(task, preds_path)
 
-    preds_path = artifacts_dir / "val_predictions.csv"
-    val_pred_df = pd.DataFrame({
-        "text": va[cfg["data"]["text_col"]].values,
-        "target": y_val,
-        "pred": model.predict(X_val),
-        "score": _get_scores(model, X_val),
-    })
-    val_pred_df.to_csv(preds_path, index=False)
-    log_artifact(task, preds_path)
+    log_dict_as_json(task, metrics_payload, artifacts_dir / "metrics.json")
 
+    # --- model artifact ---
     model_path = artifacts_dir / "model.joblib"
     joblib.dump(model, model_path)
     log_artifact(task, model_path)
 
-    # save config copy for reproducibility
+    # --- config snapshot for reproducibility ---
     cfg_path = artifacts_dir / "config.yaml"
     cfg_path.write_text(json.dumps(cfg, indent=2, default=str), encoding="utf-8")
     log_artifact(task, cfg_path)

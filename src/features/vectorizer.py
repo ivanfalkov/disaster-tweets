@@ -102,13 +102,17 @@ class GensimWord2VecVectorizer:
         return self._model
 
 
-def build_text_vectorizer(cfg: dict[str, Any]):
-    """Return an unfitted vectorizer, or None if type == 'none'.
+def _normalize_params(params: dict) -> dict:
+    """YAML gives lists; sklearn sometimes wants tuples."""
+    params = dict(params or {})
+    if "ngram_range" in params and isinstance(params["ngram_range"], list):
+        params["ngram_range"] = tuple(params["ngram_range"])
+    return params
 
-    Supported types: none, bow, tfidf, word2vec.
-    """
+
+def build_text_vectorizer(cfg: dict[str, Any]):
     vtype = cfg.get("type", "none")
-    params = cfg.get("params", {}) or {}
+    params = _normalize_params(cfg.get("params", {}))
 
     if vtype == "none":
         return None
