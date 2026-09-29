@@ -24,7 +24,7 @@ from src.experiments.runner import (
 from src.features.builder import FeatureBuilder
 from src.models.factory import build_model
 from src.utils.config import load_config
-
+from src.models.catboost import validate_native_columns
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run a classic NLP experiment.")
@@ -46,12 +46,6 @@ def main() -> None:
     X_val = builder.transform(va)
     X_test = builder.transform(te)
 
-    if builder.output != "sparse":
-        raise ValueError(
-            f"classic_nlp/run.py expects builder_output='sparse', "
-            f"got {builder.output!r}"
-        )
-
     print(
         f"[features] output={builder.output}, "
         f"blocks={builder.blocks_}, n_features={builder.n_features}"
@@ -65,6 +59,8 @@ def main() -> None:
     }
 
     model = build_model(cfg["model"])
+    if builder.output == "dataframe" and cfg["model"]["type"] == "catboost_native":
+        validate_native_columns(X_train, cfg["model"]["params"])
     model.fit(X_train, tr[target_col].values)
 
     evaluate_and_save(model, splits, cfg, task, artifacts_dir)

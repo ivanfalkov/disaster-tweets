@@ -7,7 +7,7 @@ from src.models.catboost import build_catboost_native, build_catboost_sparse
 from src.models.classic import build_classic_model
 
 
-CLASSIC_TYPES = {"logreg", "linsvc", "gbm"}
+CLASSIC_TYPES = {"logreg", "gbm", "lgbm"}
 CATBOOST_SPARSE_TYPES = {"catboost_sparse"}
 CATBOOST_NATIVE_TYPES = {"catboost_native"}
 

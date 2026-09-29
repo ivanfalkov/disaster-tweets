@@ -1,0 +1,84 @@
+name: lemma_stop_w2v_lgbm
+
+data:
+  text_col: text
+  target_col: target
+
+preprocess:
+  filtering:
+    lower: true
+    remove_url: true
+    remove_mentions: true
+    remove_hashtags_symbol: true
+    keep_only_alpha: true
+    min_token_len: 2
+  tokenizer:
+    type: tweet
+    params:
+      preserve_case: false
+      strip_handles: true
+      reduce_len: true
+  stopwords:
+    enabled: true
+    language: english
+  normalization: lemma
+  duplicates:
+    mode: drop_conflict
+    text_col: text
+    target_col: target
+  columns:
+    text: text
+    out: text_pp
+  drop_empty: true
+
+split:
+  val_size: 0.1
+  test_size: 0.1
+  seed: 42
+  stratify_col: target
+
+features:
+  builder_output: sparse
+  text:
+    type: word2vec
+    column: text_pp
+    params:
+      vector_size: 100
+      window: 5
+      min_count: 2
+      sg: 1
+      epochs: 20
+      workers: 4
+      seed: 42
+  keyword:
+    type: onehot
+    column: keyword
+    normalize: true
+    min_freq: 2
+  location:
+    type: onehot
+    column: location
+    normalize: true
+    min_freq: 5
+
+model:
+  type: lgbm
+  params:
+    n_estimators: 500
+    learning_rate: 0.05
+    num_leaves: 31
+    max_depth: -1
+    min_child_samples: 20
+    subsample: 0.8
+    colsample_bytree: 0.8
+    reg_alpha: 0.0
+    reg_lambda: 0.0
+    random_state: 42
+    n_jobs: -1
+    verbose: -1
+
+metrics: [accuracy, precision, recall, f1, roc_auc]
+
+clearml:
+  project: disaster-tweets
+  tags: [classic_nlp, word2vec, logreg, lemma, stopwords]

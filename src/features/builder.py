@@ -101,11 +101,7 @@ class FeatureBuilder:
             cfg = self._block_cfg(block)
             btype = cfg.get("type", "none")
             if btype == "none":
-                raise ValueError(
-                    f"builder_output='sparse' does not support "
-                    f"features.{block}.type='none'. "
-                    f"Use builder_output='dataframe' to pass raw columns."
-                )
+                continue
             col = self._block_column(block)
             if block == "text":
                 vec = build_text_vectorizer(cfg)
@@ -114,6 +110,13 @@ class FeatureBuilder:
             vec.fit(df[col])
             self.transformers_[block] = vec
             self.blocks_.append(block)
+
+        if not self.blocks_:
+            raise ValueError(
+                "builder_output='sparse' with all feature blocks 'none' produces "
+                "an empty matrix. Enable at least one block (text/keyword/location) "
+                "or switch to builder_output='dataframe'."
+            )
 
     def _transform_sparse(self, df: pd.DataFrame) -> csr_matrix:
         parts = []
@@ -143,11 +146,15 @@ class FeatureBuilder:
     def _transform_dataframe(self, df: pd.DataFrame) -> pd.DataFrame:
         out = pd.DataFrame(index=df.index)
         for block in self.blocks_:
-            col = self._block_column(block)
-            out[col] = df[col].values
+            cfg = self._block_cfg(block)
+            col = cfg.get("column", DEFAULT_COLUMNS[block])
+            series = df[col]
+            fillna = cfg.get("fillna")
+            if fillna is not None:
+                series = series.fillna(fillna).astype(str)
+            out[col] = series.values
         return out.reset_index(drop=True)
 
-    # --- introspection ---
 
     @property
     def n_features(self) -> int:

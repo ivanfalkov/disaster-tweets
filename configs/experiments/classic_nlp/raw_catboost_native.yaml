@@ -1,0 +1,67 @@
+name: raw_catboost_native
+
+data:
+  text_col: text
+  target_col: target
+
+preprocess:
+  filtering:
+    lower: true
+    remove_url: true
+    remove_mentions: false
+    remove_hashtags_symbol: false
+    keep_only_alpha: false
+    min_token_len: 1
+  tokenizer:
+    type: none
+  stopwords:
+    enabled: false
+    language: english
+  normalization: none
+  duplicates:
+    mode: drop_conflict
+    text_col: text
+    target_col: target
+  columns:
+    text: text
+    out: text_pp
+  drop_empty: true
+
+split:
+  val_size: 0.1
+  test_size: 0.1
+  seed: 42
+  stratify_col: target
+
+features:
+  builder_output: dataframe
+  text:
+    type: none
+    column: text_pp
+  keyword:
+    type: none
+    column: keyword
+  location:
+    type: none
+    column: location
+
+model:
+  type: catboost_native
+  params:
+    iterations: 500
+    depth: 6
+    learning_rate: 0.05
+    loss_function: Logloss
+    eval_metric: F1
+    random_seed: 42
+    verbose: false
+    allow_writing_files: false
+    thread_count: -1
+    cat_features: [keyword, location]
+    text_features: [text_pp]
+
+metrics: [accuracy, precision, recall, f1, roc_auc]
+
+clearml:
+  project: disaster-tweets
+  tags: [classic_nlp, catboost_native, raw, text_features]
