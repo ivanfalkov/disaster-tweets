@@ -5,9 +5,11 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 dependencies = [
+    "accelerate>=1.15.0",
     "catboost>=1.2.10",
     "clearml>=2.1.12",
     "click>=8.5.0",
+    "datasets>=5.0.1",
     "dotenv>=0.9.9",
     "gensim>=4.4.0",
     "ipykernel>=7.3.0",
@@ -21,6 +23,9 @@ dependencies = [
     "pandas>=3.0.6",
     "pygments>=2.21.0",
     "scikit-learn>=1.9.1",
+    "sentence-transformers>=6.1.0",
+    "torch",
+    "transformers>=5.17.0",
 ]
 
 [build-system]
@@ -34,4 +39,14 @@ packages = ["src"]
 dev = [
     "pytest>=9.1.1",
     "ruff>=0.16.8",
+]
+
+[[tool.uv.index]]
+name = "pytorch-cu121"
+url = "https://download.pytorch.org/whl/cu121"
+explicit = true
+
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-cu121", marker = "sys_platform == 'win32'" },
 ]

@@ -14,6 +14,7 @@ from typing import Any, Callable
 
 import joblib
 import pandas as pd
+import numpy as np
 
 from src.metrics.classification import compute_metrics
 from src.utils.clearml_utils import log_artifact, log_dict_as_json, log_metrics
@@ -114,3 +115,22 @@ def save_config(
 
     log_artifact(task, dest)
     print(f"[save] config -> {dest}")
+
+def save_arrays(
+    artifacts_dir: Path,
+    task: Any,
+    *,
+    filename: str,
+    **arrays: np.ndarray,
+) -> Path:
+    """Save named numpy arrays to artifacts_dir/filename (.npz) and log it.
+
+    Example:
+        save_arrays(artifacts_dir, task, filename="embeddings.npz",
+                    train=X_train, val=X_val, test=X_test)
+    """
+    path = artifacts_dir / filename
+    np.savez(path, **arrays)
+    log_artifact(task, path)
+    print(f"[save] arrays -> {path}")
+    return path

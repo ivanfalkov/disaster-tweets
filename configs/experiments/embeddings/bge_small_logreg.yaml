@@ -1,0 +1,54 @@
+name: bge_small_logreg
+
+data:
+  text_col: text
+  target_col: target
+
+preprocess:
+  filtering:
+    lower: true
+    remove_url: true
+    remove_mentions: false
+    remove_hashtags_symbol: false
+    keep_only_alpha: false
+    min_token_len: 1
+  tokenizer:
+    type: none
+  stopwords:
+    enabled: false
+    language: english
+  normalization: none
+  duplicates:
+    mode: drop_conflict
+    text_col: text
+    target_col: target
+  columns:
+    text: text
+    out: text_pp
+  drop_empty: true
+
+split:
+  val_size: 0.1
+  test_size: 0.1
+  seed: 42
+  stratify_col: target
+
+encoder:
+  name: BAAI/bge-small-en-v1.5
+  device: cpu
+  normalize: true
+  query_instruction: null
+  batch_size: 32
+
+model:
+  type: logreg
+  params:
+    C: 1.0
+    max_iter: 1000
+    random_state: 42
+
+metrics: [accuracy, precision, recall, f1, roc_auc]
+
+clearml:
+  project: disaster-tweets
+  tags: [embeddings, bge-small, logreg]
