@@ -107,33 +107,29 @@ disaster-tweets/
 
 ## 4. Инфраструктура и установка
 
-### 4.1. Зависимости
+### 4.1. Требования
 
-- Python 3.12
-- `pandas`, `numpy`, `scikit-learn`
-- `nltk` — токенизация, стемминг, лемматизация
-- `gensim` — Word2Vec
-- `lightgbm`, `catboost` — градиентный бустинг
-- `sentence-transformers` — предобученные эмбеддинги (bge-small)
-- `torch` (CUDA 12.1), `transformers`, `datasets`, `accelerate` — fine-tune
-- `clearml` — логирование экспериментов
-- `kaggle`, `python-dotenv` — загрузка данных
-- `pytest`, `ruff` — dev-инструменты
+- **Python 3.12**
+- **uv** — менеджер зависимостей и виртуальных окружений. Установка:
+  - Windows (PowerShell): `powershell -c "irm https://astral.sh/uv/install.ps1 | iex"`
+  - macOS / Linux: `curl -LsSf https://astral.sh/uv/install.sh | sh`
+  - Документация: https://docs.astral.sh/uv/
+- **Git**
+- (Опционально) **NVIDIA GPU + драйверы** с поддержкой CUDA 12.1 — только для fine-tune. Все остальные эксперименты работают на CPU.
 
-### 4.2. Установка
+### 4.2. Установка проекта
 
 ```bash
-# Клонировать репозиторий
+# 1. Клонировать репозиторий
 git clone <repo-url>
 cd disaster-tweets
 
-# Установить зависимости через uv
+# 2. Установить зависимости (uv создаст .venv и поставит всё из pyproject.toml)
 uv sync
 
-# Или через pip
-pip install -e .
+# 3. Создать .env (см. следующий пункт)
+cp .env.example .env
 ```
-
 ### 4.3. Настройка окружения
 
 Создать `.env` в корне проекта:
@@ -195,7 +191,7 @@ uv run python experiments/finetune/run.py \
 disaster-tweets/
 ├── configs/
 │   ├── general_config.yaml       # пути, patterns, metrics
-│   └── experiments/              # по одному YAML на эксперимент
+│   └── experiments/              # с разделением на тип эксперимента, по одному YAML на эксперимент
 ├── data/                         # raw, processed
 ├── scripts/                      # download_data, setup_nltk
 ├── experiments/                  # end-to-end раннеры (classic_nlp, embeddings, finetune)
@@ -208,21 +204,5 @@ disaster-tweets/
 │   ├── experiments/              # runner, artifacts (общая инфраструктура)
 │   └── utils/                    # config, clearml_utils
 ├── artifacts/                    # результаты экспериментов
-├── checkpoints/                  # чекпоинты fine-tune
 └── tests/                        # pytest
 ```
-
-## 7. Ограничения и что можно улучшить
-
-1. **Holdout без CV.** Метрики получены на одном отложенном test-сплите. Различия в F1 меньше ~0.01–0.02 — в пределах шума. Для статистической значимости нужен 5-fold CV на train, что увеличит время прогонов.
-
-2. **Fine-tune RoBERTa не оправдал ожиданий.** Причины: маленький датасет, переобучение. Что можно попробовать:
-   - `distilroberta-base` или `distilbert` — меньше параметров, меньше переобучения.
-   - Layer freezing — обучать только последние 2–3 слоя + голову.
-   - Domain-specific энкодер: `CrisisTransformers/CT-M3-Complete-SE` обучен на 15B твитов о кризисах.
-
-3. **`bge-base-en-v1.5`** (768d) не пробовался — может дать +0.01–0.02 F1.
-
-4. **Ансамблирование** `bge-small + LogReg` и `roberta-base` может дать небольшой прирост (+0.005–0.01), но это уже за пределами базового пайплайна.
-
-5. **Threshold tuning.** Модель осторожничает (precision > recall). Снижение порога классификации может поднять recall и F1.
