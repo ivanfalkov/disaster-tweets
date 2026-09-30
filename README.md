@@ -204,5 +204,4 @@ disaster-tweets/
 │   ├── experiments/              # runner, artifacts (общая инфраструктура)
 │   └── utils/                    # config, clearml_utils
 ├── artifacts/                    # результаты экспериментов
-└── tests/                        # pytest
 ```
