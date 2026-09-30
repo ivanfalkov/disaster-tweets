@@ -16,9 +16,10 @@ Single entry point: compute_metrics(y_true, y_pred, y_score=None, metrics=None)
 from __future__ import annotations
 
 import warnings
+from collections.abc import Iterable, Sequence
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Iterable, Sequence
+from typing import Any
 
 import numpy as np
 from sklearn.metrics import (
@@ -32,7 +33,6 @@ from sklearn.metrics import (
 )
 
 from src.utils.config import load_config
-
 
 DEFAULT_CONFIG_PATH = "configs/general_config.yaml"
 
@@ -70,7 +70,7 @@ def _safe(fn, *args, **kwargs) -> float | None:
     try:
         return float(fn(*args, **kwargs))
     except Exception as e:
-        warnings.warn(f"[metrics] skipped: {e}", RuntimeWarning)
+        warnings.warn(f"[metrics] skipped: {e}", RuntimeWarning, stacklevel=2)
         return None
 
 
@@ -124,13 +124,13 @@ def compute_metrics(
             v = _safe(matthews_corrcoef, y_true, y_pred)
         elif name == "roc_auc":
             if y_score is None:
-                warnings.warn("[metrics] roc_auc requested but y_score is None", RuntimeWarning)
+                warnings.warn("[metrics] roc_auc requested but y_score is None", RuntimeWarning, stacklevel=2)
                 v = None
             else:
                 v = _safe(roc_auc_score, y_true, y_score)
         elif name == "average_precision":
             if y_score is None:
-                warnings.warn("[metrics] average_precision requested but y_score is None", RuntimeWarning)
+                warnings.warn("[metrics] average_precision requested but y_score is None", RuntimeWarning, stacklevel=2)
                 v = None
             else:
                 v = _safe(average_precision_score, y_true, y_score)

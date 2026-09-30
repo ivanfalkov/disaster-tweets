@@ -64,7 +64,7 @@ class CategoricalEncoder:
         self._ohe: OneHotEncoder | None = None
         self._keep_categories: set[str] | None = None
 
-    def fit(self, series: pd.Series) -> "CategoricalEncoder":
+    def fit(self, series: pd.Series) -> CategoricalEncoder:
         values = _normalize_series(series, self.normalize)
 
         # frequency on train
@@ -109,7 +109,7 @@ class CategoricalEncoder:
         mapped = values.apply(_map).to_numpy().reshape(-1, 1)
         return self._ohe.transform(mapped).tocsr()
 
-        
+
     def fit_transform(self, series: pd.Series):
         return self.fit(series).transform(series)
     @property

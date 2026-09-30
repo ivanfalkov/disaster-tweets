@@ -22,9 +22,10 @@ from src.experiments.runner import (
     setup_experiment,
 )
 from src.features.builder import FeatureBuilder
+from src.models.catboost import validate_native_columns
 from src.models.factory import build_model
 from src.utils.config import load_config
-from src.models.catboost import validate_native_columns
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run a classic NLP experiment.")

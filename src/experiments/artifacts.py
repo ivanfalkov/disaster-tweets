@@ -9,12 +9,13 @@ Works for sklearn-style models and for the future finetune model class.
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import joblib
-import pandas as pd
 import numpy as np
+import pandas as pd
 
 from src.metrics.classification import compute_metrics
 from src.utils.clearml_utils import log_artifact, log_dict_as_json, log_metrics

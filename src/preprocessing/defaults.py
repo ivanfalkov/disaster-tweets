@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from typing import Any
 
-
 DEFAULT_PREPROCESS: dict[str, Any] = {
     "filtering": {
         "lower": True,

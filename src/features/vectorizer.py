@@ -52,7 +52,7 @@ class GensimWord2VecVectorizer:
             return []
         return text.split()
 
-    def fit(self, texts: pd.Series) -> "GensimWord2VecVectorizer":
+    def fit(self, texts: pd.Series) -> GensimWord2VecVectorizer:
         if not _HAS_GENSIM:
             raise ImportError(
                 "gensim is not installed. Run: uv add gensim"

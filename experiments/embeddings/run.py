@@ -16,13 +16,11 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-import numpy as np
-
 from src.experiments.artifacts import (
     evaluate_and_save,
+    save_arrays,
     save_config,
     save_model,
-    save_arrays,
 )
 from src.experiments.runner import (
     finish_experiment,
@@ -32,7 +30,6 @@ from src.experiments.runner import (
 )
 from src.features.embeddings import build_encoder
 from src.models.factory import build_model
-from src.utils.clearml_utils import log_artifact
 from src.utils.config import load_config
 
 

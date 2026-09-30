@@ -34,7 +34,6 @@ from scipy.sparse import csr_matrix, hstack
 from src.features.categorical import build_categorical_encoder
 from src.features.vectorizer import build_text_vectorizer
 
-
 VALID_BUILDER_OUTPUTS = ("sparse", "dataframe")
 BLOCKS = ("text", "keyword", "location")
 DEFAULT_COLUMNS = {"text": "text_pp", "keyword": "keyword", "location": "location"}
@@ -68,7 +67,7 @@ class FeatureBuilder:
 
     # --- public API ---
 
-    def fit(self, df: pd.DataFrame) -> "FeatureBuilder":
+    def fit(self, df: pd.DataFrame) -> FeatureBuilder:
         if self.output == "sparse":
             self._fit_sparse(df)
         else:

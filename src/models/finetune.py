@@ -7,8 +7,9 @@ unchanged. The wrapper adds a sklearn-like predict / predict_proba interface
 """
 from __future__ import annotations
 
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 import numpy as np
 import torch
@@ -107,7 +108,7 @@ class FinetuneModel:
         self.tokenizer.save_pretrained(path)
 
     @classmethod
-    def from_pretrained(cls, path: str | Path, device: str = "cuda") -> "FinetuneModel":
+    def from_pretrained(cls, path: str | Path, device: str = "cuda") -> FinetuneModel:
         path = Path(path)
         obj = cls.__new__(cls)
         obj.model_name = str(path)

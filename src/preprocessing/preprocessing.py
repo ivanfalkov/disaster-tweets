@@ -23,8 +23,9 @@ Layers (bottom-up):
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from functools import lru_cache
-from typing import Any, Callable
+from typing import Any
 
 import pandas as pd
 from nltk.corpus import stopwords
@@ -33,7 +34,6 @@ from nltk.tokenize import TweetTokenizer
 
 from src.preprocessing.defaults import DEFAULT_PREPROCESS
 from src.utils.config import load_config
-
 
 DEFAULT_general_config = "configs/general_config.yaml"
 

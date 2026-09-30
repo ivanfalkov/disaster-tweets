@@ -50,3 +50,32 @@ explicit = true
 torch = [
     { index = "pytorch-cu121", marker = "sys_platform == 'win32'" },
 ]
+
+[tool.ruff]
+line-length = 99
+target-version = "py312"
+exclude = [
+    ".venv",
+    "artifacts",
+    "checkpoints",
+    "data",
+    "__pycache__",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort (импорты)
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "C4",   # flake8-comprehensions
+    "SIM",  # flake8-simplify
+]
+ignore = [
+    "E501",  # line too long — отдаём на откуп line-length
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["src", "experiments", "scripts"]

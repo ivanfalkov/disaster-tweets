@@ -16,9 +16,9 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import shutil
 from pathlib import Path
 
-import shutil
 import numpy as np
 from datasets import Dataset
 from transformers import (
@@ -96,20 +96,16 @@ def main() -> None:
     max_length = cfg["model"]["params"].get("max_length", 64)
     metric_names = cfg.get("metrics") or ["accuracy", "f1", "roc_auc"]
 
-    # --- model ---
     model = build_model(cfg["model"])
     print(
         f"[finetune] model={model.model_name}, "
         f"device={model.device}, max_length={max_length}"
     )
 
-    # --- tokenize ---
     print("[finetune] tokenizing splits...")
     train_ds = _to_dataset(tr, model.tokenizer, text_col, target_col, max_length)
     val_ds = _to_dataset(va, model.tokenizer, text_col, target_col, max_length)
-    test_ds = _to_dataset(te, model.tokenizer, text_col, target_col, max_length)
 
-    # --- training args ---
     train_cfg = dict(cfg["training"])
     early_stop_patience = train_cfg.pop("early_stopping_patience", 1)
     checkpoints_dir = artifacts_dir / train_cfg.get("output_dir", "checkpoints")
@@ -120,7 +116,6 @@ def main() -> None:
 
     training_args = TrainingArguments(**train_cfg)
 
-    # --- trainer ---
     trainer = Trainer(
         model=model.model,
         args=training_args,
@@ -135,16 +130,12 @@ def main() -> None:
     trainer.train()
     print("[finetune] training finished")
 
-    # best checkpoint is already loaded (load_best_model_at_end=True)
-
-    # --- evaluate on train and test (val was used for early stopping) ---
     splits = {
         "train": (tr, tr[text_col].values),
         "test": (te, te[text_col].values),
     }
     evaluate_and_save(model, splits, cfg, task, artifacts_dir)
 
-    # --- save model + tokenizer ---
     ckpt_dir = artifacts_dir / "model"
     model.save_pretrained(ckpt_dir)
     log_artifact(task, ckpt_dir)

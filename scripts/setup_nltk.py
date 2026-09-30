@@ -1,7 +1,6 @@
 """Download required NLTK resources. Run once after cloning the repo."""
 import nltk
 
-
 REQUIRED = [
     "stopwords",
     "wordnet",
