@@ -41,9 +41,11 @@ features:
   keyword:
     type: none
     column: keyword
+    fillna: "__missing__"
   location:
     type: none
     column: location
+    fillna: "__missing__"
 
 model:
   type: catboost_native
